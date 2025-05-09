@@ -9,4 +9,9 @@ export const config = {
     ssl: process.env.POSTGRES_SSL === 'true',
   },
   production: process.env.NODE_ENV === 'production',
+  webhook: {
+    domain: process.env.WEBHOOK_DOMAIN,
+    path: process.env.WEBHOOK_PATH,
+    port: Number(process.env.WEBHOOK_PORT),
+  }
 };

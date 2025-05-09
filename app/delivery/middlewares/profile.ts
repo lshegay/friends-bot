@@ -12,16 +12,56 @@ export type Dependencies = {
   logger: Logger;
 };
 
-export function createProfileMiddleware(deps: Dependencies): MiddlewareFn<BotContext> {
+export type Options = {
+  firstLevelMaxExperience: number; // опыт, который нужен для получения 2-го уровня
+  experienceProportionIncrease: number; // пропорция увеличения опыта относительно предыдущего уровня для получения следующего уровня
+
+  charactersExperience: number; // опыт за символ
+  stickersExperience: number; // опыт за стикер
+  imagesExperience: number; // опыт за изображение
+  videosExperience: number; // опыт за видео
+  audiosExperience: number; // опыт за аудио
+  documentsExperience: number; // опыт за документ
+  linksExperience: number; // опыт за ссылку
+  repostsExperience: number; // опыт за репост
+  reactionsExperience: number; // опыт за реакцию
+  voicesExperience: number; // опыт за голосовое сообщение
+  circlesExperience: number; // опыт за круг
+  pollsExperience: number; // опыт за опрос
+};
+
+export function createProfileMiddleware(
+  deps: Dependencies,
+  options: Options,
+): MiddlewareFn<BotContext> {
   const repository = new ProfilesRepository({ db: deps.db });
   const usersRepository = new UsersRepository({ db: deps.db });
   const chatsRepository = new ChatsRepository({ db: deps.db });
 
-  const usecase = new ProfilesUsecase({
-    repository,
-    usersRepository,
-    chatsRepository,
-  });
+  const usecase = new ProfilesUsecase(
+    {
+      repository,
+      usersRepository,
+      chatsRepository,
+    },
+    {
+      firstLevelMaxExperience: options.firstLevelMaxExperience,
+      experienceProportionIncrease: options.experienceProportionIncrease,
+
+      charactersExperience: options.charactersExperience,
+      stickersExperience: options.stickersExperience,
+      imagesExperience: options.imagesExperience,
+      videosExperience: options.videosExperience,
+      audiosExperience: options.audiosExperience,
+      documentsExperience: options.documentsExperience,
+      linksExperience: options.linksExperience,
+      repostsExperience: options.repostsExperience,
+      reactionsExperience: options.reactionsExperience,
+      voicesExperience: options.voicesExperience,
+      circlesExperience: options.circlesExperience,
+      pollsExperience: options.pollsExperience,
+    },
+  );
 
   return async (ctx, next) => {
     if (!ctx.from || !ctx.chat) return;
@@ -38,7 +78,7 @@ export function createProfileMiddleware(deps: Dependencies): MiddlewareFn<BotCon
         chatId: ctx.chat.id,
       });
 
-      return ctx.reply('Ошибка: не удалось получить профиль.');
+      return;
     }
 
     ctx.profile = allResult.value.profile;

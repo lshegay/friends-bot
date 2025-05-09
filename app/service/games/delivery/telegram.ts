@@ -2,6 +2,7 @@ import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Logger } from 'pino';
 import { Markup, type NarrowedContext, type Telegraf, type Types } from 'telegraf';
 import type { BotContext } from '~/delivery/middlewares/context';
+import * as cache from '~lib/cache';
 import { GamesUsecase } from '../usecase';
 
 export type Options = {};
@@ -15,15 +16,16 @@ export type Dependencies = {
 export function useTelegramDelivery(deps: Dependencies, options: Options) {
   const delivery = new TelegramGamesDelivery(deps, options);
 
-  deps.bot.telegram.setMyCommands([
+  deps.bot.command('random', delivery.commandRandom.bind(delivery));
+  deps.bot.action(/^random:(\d+):(\d+):(\d+)$/, delivery.actionRandom.bind(delivery));
+  deps.bot.hears(/^Налей кофе\.?$/, delivery.hearsCoffee.bind(delivery));
+
+  return [
     {
       command: 'random',
       description: 'Случайное число',
     },
-  ]);
-
-  deps.bot.command('random', delivery.commandRandom.bind(delivery));
-  deps.bot.action(/^random_(\d+)_(\d+)_(\d+)$/, delivery.actionRandom.bind(delivery));
+  ];
 }
 
 export class TelegramGamesDelivery {
@@ -33,7 +35,7 @@ export class TelegramGamesDelivery {
     private readonly deps: Dependencies,
     private readonly options: Options,
   ) {
-    this.usecase = new GamesUsecase({});
+    this.usecase = new GamesUsecase();
   }
 
   async commandRandom(
@@ -46,7 +48,7 @@ export class TelegramGamesDelivery {
 */random \\<max\\>* \\- случайное число от 0 до \\<max\\> включительно
 */random \\<min\\> \\<max\\>* \\- случайное число от \\<min\\> до \\<max\\> включительно`,
         Markup.inlineKeyboard([
-          Markup.button.callback('Случайное число от 1 до 6', 'random_1_6_0'),
+          Markup.button.callback('Случайное число от 1 до 6', 'random:1:6:0'),
         ]),
       );
     }
@@ -58,7 +60,7 @@ export class TelegramGamesDelivery {
 
     return ctx.replyWithMarkdownV2(
       `🎲 Ваше число: *${number}*`,
-      Markup.inlineKeyboard([Markup.button.callback('Случайное число от 1 до 6', 'random_1_6_0')]),
+      Markup.inlineKeyboard([Markup.button.callback('Случайное число от 1 до 6', 'random:1:6:0')]),
     );
   }
 
@@ -76,8 +78,31 @@ export class TelegramGamesDelivery {
     return ctx.editMessageText(`🎲 Ваше число: *${number}*`, {
       parse_mode: 'MarkdownV2',
       ...Markup.inlineKeyboard([
-        Markup.button.callback('Случайное число от 1 до 6', `random_${min}_${max}_${number}`),
+        Markup.button.callback('Случайное число от 1 до 6', `random:${min}:${max}:${number}`),
       ]),
     });
+  }
+
+  async hearsCoffee(ctx: BotContext) {
+    const fileResult = await cache.getImage('assets/narberal/coffee.jpg');
+    if (fileResult.result === 'error') {
+      this.deps.logger.error(
+        new Error('cache.getImage', { cause: fileResult.value }),
+        'hearsCoffee',
+      );
+
+      return;
+    }
+
+    const options = { caption: 'Ваш кофе ☕, мой Лорд.' };
+
+    if (typeof fileResult.value === 'string') {
+      return ctx.replyWithPhoto(fileResult.value, options)
+    }
+
+    return ctx.replyWithPhoto(
+      { source: fileResult.value },
+      options,
+    );
   }
 }

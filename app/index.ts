@@ -37,11 +37,55 @@ logger.info('✅ Connected to Postgres database');
 
 const bot = new Telegraf<BotContext>(config.token);
 
-useTelegramDelivery({ db, bot, logger }, {});
+useTelegramDelivery(
+  { db, bot, logger },
+  {
+    experienceProportionIncrease: 0.5,
+    firstLevelMaxExperience: 100,
 
-bot.launch();
+    charactersExperience: 1,
+    stickersExperience: 1,
+    imagesExperience: 10,
+    videosExperience: 15,
+    audiosExperience: 15,
+    documentsExperience: 5,
+    linksExperience: 5,
+    repostsExperience: 2,
+    reactionsExperience: 2,
+    voicesExperience: 1,
+    circlesExperience: 15,
+    pollsExperience: 2,
 
-logger.info('✅ Connected to Telegram Bot API');
+    quotes: {
+      categories: {
+        lenin: {
+          title: 'Ленин',
+          titleQuoteBy: 'Цитата Ленина',
+          path: 'assets/quotes/lenin.json',
+        },
+      },
+
+      timeNotify: { hour: 12, minutes: 0 },
+    },
+  },
+);
+
+if (config.production) {
+  if (!config.webhook.domain?.length || !config.webhook.port)
+    throw new Error('No Webhook data is used.');
+
+  bot.launch({
+    webhook: {
+      domain: config.webhook.domain,
+      port: config.webhook.port,
+      path: config.webhook.path,
+    },
+  });
+} else {
+  bot.launch();
+}
+
+logger.info('✅ Telegram Bot Started');
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));

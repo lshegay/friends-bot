@@ -136,7 +136,7 @@ export class ProfilesRepository implements ProfilesUsecaseRepository {
     return ok(transformProfile(profileResult.value[0]));
   }
 
-  async updateProfile(profileId: string, profile: Omit<Profile, 'id'>) {
+  async updateProfile(profileId: string, profile: Partial<Omit<Profile, 'id'>>) {
     const profileResult = await trycatch(() =>
       this.deps.db
         .update(profilesTable)
@@ -193,6 +193,22 @@ function transformProfile(profile: ProfileDB): Profile {
     chatId: profile.chatId,
     level: profile.level,
     experience: profile.experience,
+    currentLevelMaxExperience: 0, // будет заменено в юзкейсе
+
+    charactersCount: profile.charactersCount,
+    wordsCount: profile.wordsCount,
+    stickersCount: profile.stickersCount,
+    imagesCount: profile.imagesCount,
+    videosCount: profile.videosCount,
+    audiosCount: profile.audiosCount,
+    documentsCount: profile.documentsCount,
+    linksCount: profile.linksCount,
+    repostsCount: profile.repostsCount,
+    reactionsCount: profile.reactionsCount,
+    voicesCount: profile.voicesCount,
+    circlesCount: profile.circlesCount,
+    pollsCount: profile.pollsCount,
+
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt || undefined,
     deletedAt: profile.deletedAt || undefined,

@@ -12,6 +12,20 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:

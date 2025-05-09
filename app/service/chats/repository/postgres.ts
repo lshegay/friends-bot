@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Chat } from '~/entities/chat';
 import { type ChatDB, chatsTable } from '~db/chats';
@@ -17,6 +17,29 @@ export class ChatsRepository implements ChatsUsecaseRepository {
     private readonly deps: Dependencies,
     // private readonly options: Options,
   ) {}
+
+  async getChats(): Promise<Ok<Chat[]> | Err<Error>> {
+    const chatsResult = await trycatch(() =>
+      this.deps.db
+        .select()
+        .from(chatsTable)
+        .where(isNull(chatsTable.deletedAt))
+        .orderBy(desc(chatsTable.createdAt))
+        .execute(),
+    );
+    if (chatsResult.result === 'error') {
+      return err(
+        new Error(
+          'this.deps.db.select().from(chatsTable).where(isNull(chatsTable.deletedAt)).execute()',
+          {
+            cause: chatsResult.value,
+          },
+        ),
+      );
+    }
+
+    return ok(chatsResult.value.map(transformChat));
+  }
 
   async getChat(id: string): Promise<Ok<Chat> | Err<Error>> {
     const chatResult = await trycatch(() =>

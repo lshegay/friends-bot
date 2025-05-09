@@ -34,5 +34,8 @@
         "./db/*"
       ],
     }
-  }
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

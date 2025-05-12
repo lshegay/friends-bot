@@ -1,5 +1,6 @@
 import type { Chat } from '~/entities/chat';
 import type { Profile, ProfileStatistics } from '~/entities/profile';
+import type { Routine, RoutineTask } from '~/entities/routines';
 import type { User } from '~/entities/user';
 import { ErrorChatNotFound } from '~/service/chats/usecase/errors';
 import type { ChatsRepository } from '~/service/chats/usecase/repository';
@@ -8,7 +9,7 @@ import type { UsersRepository } from '~/service/users/usecase/repository';
 import { type Err, type Ok, err, errIs, ok } from '~lib/errors';
 import { addLevelExperience, getLevelMaxExperience } from '~lib/level-experience';
 import { ErrorProfileNotFound } from './errors';
-import type { ProfilesRepository } from './repository';
+import type { ProfilesRepository, RoutinesRepositoryTasks } from './repository';
 
 export type Options = {
   firstLevelMaxExperience: number; // опыт, который нужен для получения 2-го уровня
@@ -32,6 +33,7 @@ export type Dependencies = {
   repository: ProfilesRepository;
   usersRepository: UsersRepository;
   chatsRepository: ChatsRepository;
+  repositoryRoutinesTasks: RoutinesRepositoryTasks;
 };
 
 export type AddProfileExperienceReason = {
@@ -189,6 +191,7 @@ export class ProfilesUsecase {
   async addProfileExperience(
     profile: Profile,
     reason: AddProfileExperienceReason,
+    options: { routine: Routine; routineTasks: RoutineTask[] },
   ): Promise<Ok<{ profile: Profile; maxExperience: number }> | Err<Error>> {
     const profileStatistics: ProfileStatistics = {
       charactersCount: profile.charactersCount,
@@ -225,11 +228,45 @@ export class ProfilesUsecase {
         exp += count * this.options.charactersExperience;
         profileStatistics.charactersCount += count;
         profileStatistics.wordsCount += text.split(' ').length;
+
+        const task = options.routineTasks.find(
+          (task) => task.taskName === 'SEND_CHARACTERS' && task.status === 'active',
+        );
+        if (task) {
+          await this.deps.repositoryRoutinesTasks.setTask({
+            ...task,
+            status:
+              (task.args.currentCount as number) + count >= (task.args.count as number)
+                ? 'completed'
+                : 'active',
+            args: {
+              ...task.args,
+              currentCount: (task.args.currentCount as number) + count,
+            },
+          });
+        }
       }
 
       if (reason.images) {
         exp += this.options.imagesExperience;
         profileStatistics.imagesCount++;
+
+        const task = options.routineTasks.find(
+          (task) => task.taskName === 'SEND_IMAGES' && task.status === 'active',
+        );
+        if (task) {
+          await this.deps.repositoryRoutinesTasks.setTask({
+            ...task,
+            status:
+              (task.args.currentCount as number) + 1 >= (task.args.count as number)
+                ? 'completed'
+                : 'active',
+            args: {
+              ...task.args,
+              currentCount: (task.args.currentCount as number) + 1,
+            },
+          });
+        }
       }
 
       if (reason.stickers) {

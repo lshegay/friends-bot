@@ -2,9 +2,13 @@ import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Logger } from 'pino';
 import type { Telegraf } from 'telegraf';
 import type { BotContext } from '~/delivery/middlewares/context';
+import type { RoutineTask } from '~/entities/routines';
 import { ChatsRepository } from '~/service/chats/repository/postgres';
 import { ChatsUsecase } from '~/service/chats/usecase';
 import { trycatch } from '~lib/errors';
+import type { MessageBroker } from '~lib/message-broker';
+import { runAtSpecificTimeOfDay } from '~lib/utils';
+import { RoutinesRepositoryTasks } from '../../repository/broker-lib';
 import { ForismaticRepository } from '../../repository/forismatic';
 import { QuotesForismaticUsecase } from '../../usecase/forismatic';
 
@@ -12,6 +16,7 @@ export type Dependencies = {
   db: BunSQLDatabase;
   bot: Telegraf<BotContext>;
   logger: Logger;
+  tasksMessageBroker: MessageBroker<RoutineTask>;
 };
 
 export type Options = {
@@ -34,8 +39,13 @@ export class NotifierWorker {
     this.chatsUsecase = new ChatsUsecase({ repository });
 
     const repositoryForismatic = new ForismaticRepository();
+    const repositoryRoutinesTasks = new RoutinesRepositoryTasks({
+      mb: this.deps.tasksMessageBroker,
+    });
+
     this.quotesForismaticUsecase = new QuotesForismaticUsecase({
       repository: repositoryForismatic,
+      repositoryRoutinesTasks: repositoryRoutinesTasks,
     });
   }
 
@@ -48,7 +58,7 @@ export class NotifierWorker {
     this.deps.logger.info('☑️  Started to work');
 
     this.stop = runAtSpecificTimeOfDay(timeNotify.hour, timeNotify.minutes, async () => {
-      this.deps.logger.info('Starting to notify chats');
+      this.deps.logger.info('Started to notify chats');
 
       const chatsResult = await this.chatsUsecase.getChats();
       if (chatsResult.result === 'error') {
@@ -60,7 +70,7 @@ export class NotifierWorker {
         return;
       }
 
-      const quoteResult = await this.quotesForismaticUsecase.getRandomQuote();
+      const quoteResult = await this.quotesForismaticUsecase.getRandomQuote([]);
       if (quoteResult.result === 'error') {
         this.deps.logger.error(
           new Error('this.quotesForismaticUsecase.getRandomQuote', { cause: quoteResult.value }),
@@ -99,37 +109,4 @@ ${quoteResult.value.reference.length ? `<i>${quoteResult.value.reference}</i>` :
       this.deps.logger.info('Notifying chats completed successfully');
     });
   }
-}
-
-function runAtSpecificTimeOfDay(hour: number, minutes: number, func: () => void) {
-  const TWENTY_FOUR_HOURS = 86400000;
-
-  const now = new Date();
-
-  let etaMs =
-    new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minutes, 0, 0).getTime() -
-    now.getTime();
-
-  if (etaMs < 0) {
-    etaMs += TWENTY_FOUR_HOURS;
-  }
-
-  let interval: ReturnType<typeof setInterval>;
-
-  const timeout = setTimeout(() => {
-    // запустить один раз
-    func();
-
-    // запускать каждые 24 часа
-    interval = setInterval(func, TWENTY_FOUR_HOURS);
-  }, etaMs);
-
-  return () => {
-    // остановить таймер
-    clearTimeout(timeout);
-
-    if (interval) {
-      clearInterval(interval);
-    }
-  };
 }

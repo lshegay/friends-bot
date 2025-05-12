@@ -1,11 +1,15 @@
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Logger } from 'pino';
 import type { Telegraf } from 'telegraf';
+import type { RoutineTask, RoutineTasks } from '~/entities/routines';
 import { useTelegramDelivery as useGamesDelivery } from '~/service/games/delivery/telegram';
 import { useTelegramDelivery as useProfilesDelivery } from '~/service/profiles/delivery/telegram';
 import { useTelegramDelivery as useQuotesDelivery } from '~/service/quotes/delivery/telegram';
+import { useTelegramDelivery as useRoutinesDelivery } from '~/service/routine/delivery/telegram';
+import type { MessageBroker } from '~lib/message-broker';
 import type { BotContext } from './middlewares/context';
 import { createProfileMiddleware } from './middlewares/profile';
+import { createRoutineMiddleware } from './middlewares/routines';
 
 export type Options = {
   firstLevelMaxExperience: number; // опыт, который нужен для получения 2-го уровня
@@ -23,6 +27,14 @@ export type Options = {
   voicesExperience: number; // опыт за голосовое сообщение
   circlesExperience: number; // опыт за круг
   pollsExperience: number; // опыт за опрос
+
+  routines: {
+    tasksPerDay: number; // количество задач в день
+    timeTasksUpdate: { hour: number; minutes: number };
+
+    tasks: RoutineTasks;
+    taskCompletionWorkerInterval: number; // интервал работы воркера мс
+  };
 
   quotes: {
     categories: Record<
@@ -42,6 +54,7 @@ export type Dependencies = {
   bot: Telegraf<BotContext>;
   db: BunSQLDatabase;
   logger: Logger;
+  tasksMessageBroker: MessageBroker<RoutineTask>;
 };
 
 export function useTelegramDelivery(deps: Dependencies, options: Options) {
@@ -49,18 +62,65 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     {
       db: deps.db,
       logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
     },
     options,
   );
 
+  const routineMiddleware = createRoutineMiddleware(
+    {
+      db: deps.db,
+      logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
+    },
+    {
+      ...options.routines,
+
+      firstLevelMaxExperience: options.firstLevelMaxExperience,
+      experienceProportionIncrease: options.experienceProportionIncrease,
+    },
+  );
+
   deps.bot.use(profileMiddleware);
+  deps.bot.use(routineMiddleware);
 
-  const gamesCommands = useGamesDelivery({ db: deps.db, bot: deps.bot, logger: deps.logger }, {});
+  const gamesCommands = useGamesDelivery(
+    {
+      db: deps.db,
+      bot: deps.bot,
+      logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
+    },
+    {},
+  );
 
-  const quotesCommands = useQuotesDelivery({ db: deps.db, bot: deps.bot, logger: deps.logger }, options.quotes);
+  const quotesCommands = useQuotesDelivery(
+    { db: deps.db, bot: deps.bot, logger: deps.logger, tasksMessageBroker: deps.tasksMessageBroker },
+    options.quotes,
+  );
+
+  const dailiesCommands = useRoutinesDelivery(
+    {
+      db: deps.db,
+      bot: deps.bot,
+      logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
+    },
+    {
+      ...options.routines,
+
+      firstLevelMaxExperience: options.firstLevelMaxExperience,
+      experienceProportionIncrease: options.experienceProportionIncrease,
+    },
+  );
 
   const profilesCommands = useProfilesDelivery(
-    { db: deps.db, bot: deps.bot, logger: deps.logger },
+    {
+      db: deps.db,
+      bot: deps.bot,
+      logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
+    },
     {
       experienceProportionIncrease: options.experienceProportionIncrease,
       firstLevelMaxExperience: options.firstLevelMaxExperience,
@@ -80,5 +140,5 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     },
   );
 
-  deps.bot.telegram.setMyCommands([...gamesCommands, ...quotesCommands, ...profilesCommands]);
+  deps.bot.telegram.setMyCommands([...gamesCommands, ...quotesCommands, ...dailiesCommands, ...profilesCommands]);
 }

@@ -1,4 +1,5 @@
 import type { Quote } from '~/entities/quotes';
+import type { RoutineTask } from '~/entities/routines';
 import type { Err, Ok } from '~lib/errors';
 
 export interface QuotesForismaticRepository {

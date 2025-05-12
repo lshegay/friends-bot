@@ -7,6 +7,9 @@ import { QuotesForismaticUsecase } from '../usecase/forismatic';
 import { QuotesUsecase } from '../usecase/local';
 import { NotifierWorker } from './notifier-worker';
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
+import type { RoutineTask } from '~/entities/routines';
+import type { MessageBroker } from '~lib/message-broker';
+import { RoutinesRepositoryTasks } from '../repository/broker-lib';
 
 export type Options = {
   categories: Record<
@@ -25,6 +28,7 @@ export type Dependencies = {
   db: BunSQLDatabase;
   bot: Telegraf<BotContext>;
   logger: Logger;
+  tasksMessageBroker: MessageBroker<RoutineTask>;
 };
 
 export function useTelegramDelivery(deps: Dependencies, options: Options) {
@@ -60,9 +64,12 @@ export class TelegramQuotesDelivery {
       },
     );
     const repositoryForismatic = new ForismaticRepository();
+    const repositoryRoutinesTasks = new RoutinesRepositoryTasks({
+      mb: this.deps.tasksMessageBroker,
+    });
 
-    this.usecase = new QuotesUsecase({ repository });
-    this.usecaseForismatic = new QuotesForismaticUsecase({ repository: repositoryForismatic });
+    this.usecase = new QuotesUsecase({ repository, repositoryRoutinesTasks });
+    this.usecaseForismatic = new QuotesForismaticUsecase({ repository: repositoryForismatic, repositoryRoutinesTasks });
   }
 
   async commandQuoteHelp(
@@ -113,7 +120,7 @@ ${categories.map((category) => `\\- ${category.title} \\(\\/quote ${category.id}
       return this.commandQuoteForismatic(ctx);
     }
 
-    const quoteResult = await this.usecase.getRandomQuote(categoryId);
+    const quoteResult = await this.usecase.getRandomQuote(categoryId, ctx.routineTasks);
     if (quoteResult.result === 'error') {
       this.deps.logger.error(
         new Error('this.usecase.getRandomQuote', { cause: quoteResult.value }),
@@ -141,7 +148,7 @@ ${categories.map((category) => `\\- ${category.title} \\(\\/quote ${category.id}
   ) {
     const categoryId = ctx.match[1];
 
-    const quoteResult = await this.usecase.getRandomQuote(categoryId);
+    const quoteResult = await this.usecase.getRandomQuote(categoryId, ctx.routineTasks);
     if (quoteResult.result === 'error') {
       this.deps.logger.error(
         new Error('this.usecase.getRandomQuote', { cause: quoteResult.value }),
@@ -165,7 +172,7 @@ ${categories.map((category) => `\\- ${category.title} \\(\\/quote ${category.id}
   }
 
   async commandQuoteForismatic(ctx: BotContext) {
-    const quoteResult = await this.usecaseForismatic.getRandomQuote();
+    const quoteResult = await this.usecaseForismatic.getRandomQuote(ctx.routineTasks);
     if (quoteResult.result === 'error') {
       this.deps.logger.error(
         new Error('this.usecaseForismatic.getRandomQuote', { cause: quoteResult.value }),
@@ -189,7 +196,7 @@ ${quoteResult.value.reference.length ? `<i>${quoteResult.value.reference}</i>` :
   }
 
   async actionQuoteForismatic(ctx: BotContext) {
-    const quoteResult = await this.usecaseForismatic.getRandomQuote();
+    const quoteResult = await this.usecaseForismatic.getRandomQuote(ctx.routineTasks);
     if (quoteResult.result === 'error') {
       this.deps.logger.error(
         new Error('this.usecaseForismatic.getRandomQuote', { cause: quoteResult.value }),

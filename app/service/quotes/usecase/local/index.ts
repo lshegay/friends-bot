@@ -1,9 +1,11 @@
 import type { Quote, QuotesCategory } from '~/entities/quotes';
+import type { RoutineTask } from '~/entities/routines';
 import { type Err, type Ok, err, ok } from '~lib/errors';
-import type { QuotesRepository } from './repository';
+import type { QuotesRepository, RoutinesRepositoryTasks } from './repository';
 
 export type Dependencies = {
   repository: QuotesRepository;
+  repositoryRoutinesTasks: RoutinesRepositoryTasks;
 };
 
 export class QuotesUsecase {
@@ -23,6 +25,7 @@ export class QuotesUsecase {
 
   async getRandomQuote(
     categoryId: string,
+    routineTasks: RoutineTask[],
   ): Promise<Ok<{ category: QuotesCategory; quote: Quote }> | Err<Error>> {
     const categoryResult = await this.deps.repository.getQuotesCategory(categoryId);
     if (categoryResult.result === 'error') {
@@ -32,6 +35,16 @@ export class QuotesUsecase {
     const category = categoryResult.value;
     if (!category.quotes.length) {
       return err(new Error('quotes.length: no quotes found in category'));
+    }
+
+    const task = routineTasks.find(
+      (task) => task.taskName === 'READ_QUOTE' && task.status === 'active',
+    );
+    if (task) {
+      await this.deps.repositoryRoutinesTasks.setTask({
+        ...task,
+        status: 'completed',
+      });
     }
 
     const index = Math.floor(Math.random() * category.quotes.length);

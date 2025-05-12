@@ -6,10 +6,14 @@ import { ProfilesRepository } from '~/service/profiles/repository/postgres';
 import { ProfilesUsecase } from '~/service/profiles/usecase';
 import { UsersRepository } from '~/service/users/repository/postgres';
 import type { BotContext } from './context';
+import { RoutinesRepositoryTasks } from '~/service/profiles/repository/broker-lib';
+import type { RoutineTask } from '~/entities/routines';
+import type { MessageBroker } from '~lib/message-broker';
 
 export type Dependencies = {
   db: BunSQLDatabase;
   logger: Logger;
+  tasksMessageBroker: MessageBroker<RoutineTask>;
 };
 
 export type Options = {
@@ -37,12 +41,14 @@ export function createProfileMiddleware(
   const repository = new ProfilesRepository({ db: deps.db });
   const usersRepository = new UsersRepository({ db: deps.db });
   const chatsRepository = new ChatsRepository({ db: deps.db });
+  const repositoryRoutinesTasks = new RoutinesRepositoryTasks({ mb: deps.tasksMessageBroker });
 
   const usecase = new ProfilesUsecase(
     {
       repository,
       usersRepository,
       chatsRepository,
+      repositoryRoutinesTasks,
     },
     {
       firstLevelMaxExperience: options.firstLevelMaxExperience,

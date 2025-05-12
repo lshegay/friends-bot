@@ -4,10 +4,13 @@ import type { NarrowedContext, Telegraf } from 'telegraf';
 import { Markup } from 'telegraf';
 import type * as Types from 'telegraf/types';
 import type { BotContext } from '~/delivery/middlewares/context';
+import type { RoutineTask } from '~/entities/routines';
 import { ChatsRepository } from '~/service/chats/repository/postgres';
 import { UsersRepository } from '~/service/users/repository/postgres';
+import type { MessageBroker } from '~lib/message-broker';
 import { ProfilesRepository } from '../repository/postgres';
 import { type AddProfileExperienceReason, ProfilesUsecase } from '../usecase';
+import { RoutinesRepositoryTasks } from '../repository/broker-lib';
 
 export type Options = {
   firstLevelMaxExperience: number; // опыт, который нужен для получения 2-го уровня
@@ -31,6 +34,7 @@ export type Dependencies = {
   bot: Telegraf<BotContext>;
   db: BunSQLDatabase;
   logger: Logger;
+  tasksMessageBroker: MessageBroker<RoutineTask>;
 };
 
 export function useTelegramDelivery(deps: Dependencies, options: Options) {
@@ -65,9 +69,12 @@ export class TelegramProfilesDelivery {
     const repository = new ProfilesRepository({ db: this.deps.db });
     const usersRepository = new UsersRepository({ db: this.deps.db });
     const chatsRepository = new ChatsRepository({ db: this.deps.db });
+    const repositoryRoutinesTasks = new RoutinesRepositoryTasks({
+      mb: this.deps.tasksMessageBroker,
+    });
 
     this.usecase = new ProfilesUsecase(
-      { repository, usersRepository, chatsRepository },
+      { repository, usersRepository, chatsRepository, repositoryRoutinesTasks },
       {
         experienceProportionIncrease: this.options.experienceProportionIncrease,
         firstLevelMaxExperience: this.options.firstLevelMaxExperience,
@@ -103,15 +110,17 @@ export class TelegramProfilesDelivery {
     );
   }
 
-  async onMessage(
-    ctx: NarrowedContext<BotContext, Types.Update.MessageUpdate<Types.Message>>,
-  ) {
+  async onMessage(ctx: NarrowedContext<BotContext, Types.Update.MessageUpdate<Types.Message>>) {
     if (!ctx.from || !ctx.chat) return ctx.reply('Ошибка: не удалось получить ID пользователя.');
 
     const reasons: AddProfileExperienceReason = {};
 
     if ('text' in ctx.message) {
       reasons.characters = { text: ctx.message.text };
+    }
+
+    if ('caption' in ctx.message && ctx.message.caption?.length) {
+      reasons.characters = { text: ctx.message.caption };
     }
 
     if ('photo' in ctx.message) {
@@ -154,9 +163,16 @@ export class TelegramProfilesDelivery {
       reasons.polls = {};
     }
 
-    const experienceResult = await this.usecase.addProfileExperience(ctx.profile, reasons);
+    const experienceResult = await this.usecase.addProfileExperience(ctx.profile, reasons, {
+      routine: ctx.routine,
+      routineTasks: ctx.routineTasks,
+    });
     if (experienceResult.result === 'error') {
-      this.deps.logger.error(experienceResult.value, 'addProfileExperience: this.usecase.addProfileExperience', {});
+      this.deps.logger.error(
+        experienceResult.value,
+        'addProfileExperience: this.usecase.addProfileExperience',
+        {},
+      );
 
       return;
     }

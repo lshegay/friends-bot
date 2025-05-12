@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:15
     container_name: postgres
+    restart: until-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -17,13 +18,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: app
-    restart: always
+    restart: until-stopped
     env_file:
       - .env
     environment:
       POSTGRES_HOST: postgres
-    ports:
-      - "3000:3000"
     depends_on:
       - postgres
 

@@ -3,8 +3,9 @@ import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Profile } from '~/entities/profile';
 import { chatsTable } from '~db/chats';
 import { type ProfileDB, profilesTable } from '~db/profile';
+import { routinesTable } from '~db/routines';
 import { usersTable } from '~db/users';
-import { err, ok, trycatch } from '~lib/errors';
+import { type Err, type Ok, err, ok, trycatch } from '~lib/errors';
 import { ErrorProfileNotFound } from '../usecase/errors';
 import type { ProfilesRepository as ProfilesUsecaseRepository } from '../usecase/repository';
 
@@ -121,6 +122,42 @@ export class ProfilesRepository implements ProfilesUsecaseRepository {
     return ok(transformProfile(profileResult.value[0].profiles));
   }
 
+  async getProfileByRoutineId(routineId: string): Promise<Ok<Profile> | Err<Error>> {
+    const profileResult = await trycatch(() =>
+      this.deps.db
+        .select()
+        .from(routinesTable)
+        .fullJoin(profilesTable, eq(profilesTable.id, routinesTable.profileId))
+        .where(
+          and(
+            eq(routinesTable.id, routineId),
+            isNull(profilesTable.deletedAt),
+            isNull(routinesTable.deletedAt),
+          ),
+        )
+        .limit(1)
+        .execute(),
+    );
+    if (profileResult.result === 'error') {
+      return err(
+        new Error(
+          'this.deps.db.select().from(profilesTable).where(eq(profilesTable.routineId, routineId)).execute()',
+          { cause: profileResult.value },
+        ),
+      );
+    }
+
+    if (!profileResult.value[0].profiles) {
+      return err(
+        new ErrorProfileNotFound(
+          'this.deps.db.select().from(profilesTable).where(eq(profilesTable.routineId, routineId)).execute()',
+        ),
+      );
+    }
+
+    return ok(transformProfile(profileResult.value[0].profiles));
+  }
+
   async createProfile(profile: Profile) {
     const profileResult = await trycatch(() =>
       this.deps.db.insert(profilesTable).values(profile).returning().execute(),
@@ -144,7 +181,7 @@ export class ProfilesRepository implements ProfilesUsecaseRepository {
           ...profile,
           updatedAt: new Date(),
         })
-        .where(eq(profilesTable.id, profileId))
+        .where(and(eq(profilesTable.id, profileId), isNull(profilesTable.deletedAt)))
         .returning()
         .execute(),
     );
@@ -153,6 +190,14 @@ export class ProfilesRepository implements ProfilesUsecaseRepository {
         new Error(
           'this.deps.db.update(profilesTable).set(profile).where(eq(profilesTable.id, id)).execute()',
           { cause: profileResult.value },
+        ),
+      );
+    }
+
+    if (!profileResult.value.at(0)) {
+      return err(
+        new ErrorProfileNotFound(
+          'this.deps.db.select().from(profilesTable).where(eq(profilesTable.userId, id)).execute()',
         ),
       );
     }

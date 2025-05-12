@@ -2,7 +2,10 @@ import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Logger } from 'pino';
 import { Markup, type NarrowedContext, type Telegraf, type Types } from 'telegraf';
 import type { BotContext } from '~/delivery/middlewares/context';
+import type { RoutineTask } from '~/entities/routines';
 import * as cache from '~lib/cache';
+import type { MessageBroker } from '~lib/message-broker';
+import { RoutinesRepositoryTasks } from '../repository/broker-lib';
 import { GamesUsecase } from '../usecase';
 
 export type Options = {};
@@ -11,6 +14,7 @@ export type Dependencies = {
   bot: Telegraf<BotContext>;
   db: BunSQLDatabase;
   logger: Logger;
+  tasksMessageBroker: MessageBroker<RoutineTask>;
 };
 
 export function useTelegramDelivery(deps: Dependencies, options: Options) {
@@ -35,7 +39,9 @@ export class TelegramGamesDelivery {
     private readonly deps: Dependencies,
     private readonly options: Options,
   ) {
-    this.usecase = new GamesUsecase();
+    const repositoryRoutinesTasks = new RoutinesRepositoryTasks({ mb: deps.tasksMessageBroker });
+
+    this.usecase = new GamesUsecase({ repositoryRoutinesTasks });
   }
 
   async commandRandom(
@@ -94,15 +100,20 @@ export class TelegramGamesDelivery {
       return;
     }
 
+    const coffeeResult = await this.usecase.getCoffee(ctx.profile, ctx.routine, ctx.routineTasks);
+    if (coffeeResult.result === 'error') {
+      this.deps.logger.error(
+        new Error('usecase.getCoffee', { cause: coffeeResult.value }),
+        'hearsCoffee',
+      );
+    }
+
     const options = { caption: 'Ваш кофе ☕, мой Лорд.' };
 
     if (typeof fileResult.value === 'string') {
-      return ctx.replyWithPhoto(fileResult.value, options)
+      return ctx.replyWithPhoto(fileResult.value, options);
     }
 
-    return ctx.replyWithPhoto(
-      { source: fileResult.value },
-      options,
-    );
+    return ctx.replyWithPhoto({ source: fileResult.value }, options);
   }
 }

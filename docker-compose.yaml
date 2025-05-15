@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:15
     container_name: postgres
-    restart: until-stopped
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: app
-    restart: until-stopped
+    restart: unless-stopped
     env_file:
       - .env
     environment:

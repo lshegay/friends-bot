@@ -5,6 +5,7 @@ import { type ChatDB, chatsTable } from '~db/chats';
 import { type Err, type Ok, err, ok, trycatch } from '~lib/errors';
 import { ErrorChatNotFound } from '../usecase/errors';
 import type { ChatsRepository as ChatsUsecaseRepository } from '../usecase/repository';
+import dayjs from 'dayjs';
 
 // export type Options = {};
 
@@ -167,8 +168,8 @@ export function transformChat(chat: ChatDB): Chat {
     id: chat.id,
     externalId: chat.externalId,
     type: chat.type,
-    createdAt: chat.createdAt,
-    updatedAt: chat.updatedAt ?? undefined,
-    deletedAt: chat.deletedAt ?? undefined,
+    createdAt: dayjs.utc(chat.createdAt).tz(undefined, true).toDate(),
+    updatedAt: chat.updatedAt ? dayjs.utc(chat.updatedAt).tz(undefined, true).toDate() : undefined,
+    deletedAt: chat.deletedAt ? dayjs.utc(chat.deletedAt).tz(undefined, true).toDate() : undefined,
   } satisfies Chat;
 }

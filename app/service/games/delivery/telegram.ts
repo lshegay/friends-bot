@@ -22,7 +22,7 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
 
   deps.bot.command('random', delivery.commandRandom.bind(delivery));
   deps.bot.action(/^random:(\d+):(\d+):(\d+)$/, delivery.actionRandom.bind(delivery));
-  deps.bot.hears(/^Налей кофе\.?$/, delivery.hearsCoffee.bind(delivery));
+  deps.bot.hears(/^(Н|н)алей (.+)\.?$/, delivery.hearsDrink.bind(delivery));
 
   return [
     {
@@ -89,7 +89,7 @@ export class TelegramGamesDelivery {
     });
   }
 
-  async hearsCoffee(ctx: BotContext) {
+  async hearsDrink(ctx: BotContext) {
     const fileResult = await cache.getImage('assets/narberal/coffee.jpg');
     if (fileResult.result === 'error') {
       this.deps.logger.error(

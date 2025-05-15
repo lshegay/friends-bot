@@ -22,6 +22,13 @@
       "when": 1746991941124,
       "tag": "0002_rich_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1747330728535,
+      "tag": "0003_red_hairball",
+      "breakpoints": true
     }
   ]
 }

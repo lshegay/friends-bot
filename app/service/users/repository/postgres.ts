@@ -5,6 +5,7 @@ import { type UserDB, usersTable } from '~db/users';
 import { type Err, type Ok, err, ok, trycatch } from '~lib/errors';
 import { ErrorUserNotFound } from '../usecase/errors';
 import type { UsersRepository as UsersUsecaseRepository } from '../usecase/repository';
+import dayjs from 'dayjs';
 
 // export type Options = {};
 
@@ -93,7 +94,10 @@ export class UsersRepository implements UsersUsecaseRepository {
     return ok(transformUser(userResult.value[0]));
   }
 
-  async updateUser(userId: string, user: Omit<User, 'id'>): Promise<Ok<User> | Err<Error>> {
+  async updateUser(
+    userId: string,
+    user: Partial<Omit<User, 'id'>>,
+  ): Promise<Ok<User> | Err<Error>> {
     const userResult = await trycatch(() =>
       this.deps.db
         .update(usersTable)
@@ -146,8 +150,11 @@ export function transformUser(user: UserDB): User {
     id: user.id,
     externalId: user.externalId,
     isBot: user.isBot,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt ?? undefined,
-    deletedAt: user.deletedAt ?? undefined,
+    firstName: user.firstName ?? undefined,
+    lastName: user.lastName ?? undefined,
+    username: user.username ?? undefined,
+    createdAt: dayjs.utc(user.createdAt).tz(undefined, true).toDate(),
+    updatedAt: user.updatedAt ? dayjs.utc(user.updatedAt).tz(undefined, true).toDate() : undefined,
+    deletedAt: user.deletedAt ? dayjs.utc(user.deletedAt).tz(undefined, true).toDate() : undefined,
   } satisfies User;
 }

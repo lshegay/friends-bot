@@ -8,6 +8,7 @@ import { usersTable } from '~db/users';
 import { type Err, type Ok, err, ok, trycatch } from '~lib/errors';
 import { ErrorProfileNotFound } from '../usecase/errors';
 import type { ProfilesRepository as ProfilesUsecaseRepository } from '../usecase/repository';
+import dayjs from 'dayjs';
 
 // export type Options = {};
 
@@ -254,8 +255,12 @@ function transformProfile(profile: ProfileDB): Profile {
     circlesCount: profile.circlesCount,
     pollsCount: profile.pollsCount,
 
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt || undefined,
-    deletedAt: profile.deletedAt || undefined,
+    createdAt: dayjs.utc(profile.createdAt).tz(undefined, true).toDate(),
+    updatedAt: profile.updatedAt
+      ? dayjs.utc(profile.updatedAt).tz(undefined, true).toDate()
+      : undefined,
+    deletedAt: profile.deletedAt
+      ? dayjs.utc(profile.deletedAt).tz(undefined, true).toDate()
+      : undefined,
   };
 }

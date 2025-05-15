@@ -41,8 +41,7 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
   const delivery = new TelegramProfilesDelivery(deps, options);
 
   deps.bot.command('profile', delivery.commandProfile.bind(delivery));
-  deps.bot.command('stats', delivery.commandActionStats.bind(delivery));
-  deps.bot.action('stats', delivery.commandActionStats.bind(delivery));
+  deps.bot.action('profile:extended', delivery.actionProfileExtended.bind(delivery));
 
   // самая последняя, т.к. считает опыт за сообщения
   deps.bot.on('message', delivery.onMessage.bind(delivery));
@@ -51,10 +50,6 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     {
       command: 'profile',
       description: 'Ваш профиль',
-    },
-    {
-      command: 'stats',
-      description: 'Расширенная статистика',
     },
   ];
 }
@@ -105,7 +100,7 @@ export class TelegramProfilesDelivery {
 Ваш опыт: <b>${ctx.profile.experience} / ${ctx.profile.currentLevelMaxExperience}</b>`,
       {
         parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([Markup.button.callback('Расширенная статистика', 'stats')]),
+        ...Markup.inlineKeyboard([Markup.button.callback('Расширенная статистика', 'profile:extended')]),
       },
     );
   }
@@ -178,7 +173,7 @@ export class TelegramProfilesDelivery {
     }
   }
 
-  async commandActionStats(ctx: BotContext) {
+  async actionProfileExtended(ctx: BotContext) {
     if (!ctx.from || !ctx.chat) return ctx.reply('Ошибка: не удалось получить ID пользователя.');
 
     const text = `📊 <b>Расширенная статистика</b> 📊
@@ -201,6 +196,8 @@ export class TelegramProfilesDelivery {
 • голосовых сообщений: <b>${ctx.profile.voicesCount}</b>
 • кружков: <b>${ctx.profile.circlesCount}</b>
 • опросов: <b>${ctx.profile.pollsCount}</b>
+• выполнено заданий: <b>${ctx.routine.tasksCompletedCount}</b>
+• выполнено полностью: <b>${ctx.routine.dailiesCompletedCount}</b>
 `;
 
     if (ctx.callbackQuery) {

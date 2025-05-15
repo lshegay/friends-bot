@@ -7,6 +7,9 @@ import { useTelegramDelivery } from './delivery/telegram';
 import { MessageBroker } from '~lib/message-broker';
 import type { RoutineTask } from './entities/routines';
 
+import '~lib/dayjs';
+import dayjs from 'dayjs';
+
 const logger = pino({
   ...(!config.production
     ? {
@@ -60,10 +63,15 @@ useTelegramDelivery(
     circlesExperience: 30,
     pollsExperience: 2,
 
+    statistics: {
+      userCachePeriod: 1000 * 60 * 60 * 24, // 24 часа
+      userStatsRatingCount: 10, // количество пользователей в рейтинге
+    },
+
     routines: {
       tasksPerDay: 3,
       timeTasksUpdate: { hour: 8, minutes: 0 },
-      
+
       taskCompletionWorkerInterval: 200,
 
       tasks: [

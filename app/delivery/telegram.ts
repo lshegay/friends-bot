@@ -6,6 +6,7 @@ import { useTelegramDelivery as useGamesDelivery } from '~/service/games/deliver
 import { useTelegramDelivery as useProfilesDelivery } from '~/service/profiles/delivery/telegram';
 import { useTelegramDelivery as useQuotesDelivery } from '~/service/quotes/delivery/telegram';
 import { useTelegramDelivery as useRoutinesDelivery } from '~/service/routine/delivery/telegram';
+import { useTelegramDelivery as useStatsDelivery } from '~/service/stats/delivery/telegram';
 import type { MessageBroker } from '~lib/message-broker';
 import type { BotContext } from './middlewares/context';
 import { createProfileMiddleware } from './middlewares/profile';
@@ -27,6 +28,11 @@ export type Options = {
   voicesExperience: number; // опыт за голосовое сообщение
   circlesExperience: number; // опыт за круг
   pollsExperience: number; // опыт за опрос
+
+  statistics: {
+    userCachePeriod: number; // время кэша пользователя телеграм в мс
+    userStatsRatingCount: number; // количество пользователей в рейтинге
+  };
 
   routines: {
     tasksPerDay: number; // количество задач в день
@@ -95,7 +101,12 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
   );
 
   const quotesCommands = useQuotesDelivery(
-    { db: deps.db, bot: deps.bot, logger: deps.logger, tasksMessageBroker: deps.tasksMessageBroker },
+    {
+      db: deps.db,
+      bot: deps.bot,
+      logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
+    },
     options.quotes,
   );
 
@@ -112,6 +123,15 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
       firstLevelMaxExperience: options.firstLevelMaxExperience,
       experienceProportionIncrease: options.experienceProportionIncrease,
     },
+  );
+
+  const statsCommands = useStatsDelivery(
+    {
+      db: deps.db,
+      bot: deps.bot,
+      logger: deps.logger,
+    },
+    options.statistics,
   );
 
   const profilesCommands = useProfilesDelivery(
@@ -140,5 +160,11 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     },
   );
 
-  deps.bot.telegram.setMyCommands([...gamesCommands, ...quotesCommands, ...dailiesCommands, ...profilesCommands]);
+  deps.bot.telegram.setMyCommands([
+    ...gamesCommands,
+    ...quotesCommands,
+    ...dailiesCommands,
+    ...statsCommands,
+    ...profilesCommands,
+  ]);
 }

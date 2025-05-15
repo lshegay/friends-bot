@@ -6,7 +6,7 @@ export type GetLevelMaxExperienceOptions = {
 export function getLevelMaxExperience(level: number, options: GetLevelMaxExperienceOptions) {
   const { firstLevelMaxExperience, experienceProportionIncrease } = options;
 
-  return firstLevelMaxExperience * (1 + experienceProportionIncrease) ** (level - 1);
+  return Math.round(firstLevelMaxExperience * (1 + experienceProportionIncrease) ** (level - 1));
 }
 
 export type AddLevelExperienceOptions = {

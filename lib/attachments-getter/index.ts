@@ -17,7 +17,7 @@ export type Dependencies = {
 export class AttachmentsGetter {
   constructor(private readonly deps: Dependencies) {}
 
-  async setFile(externalId: string, file: File): Promise<Ok<Attachment> | Err<Error>> {
+  async setFile(file: File, externalId?: string): Promise<Ok<Attachment> | Err<Error>> {
     const hash = await hashFile(file);
 
     const fileDBByHashResult = await this.deps.dbRepository.getAttachmentByHash(hash);
@@ -29,6 +29,10 @@ export class AttachmentsGetter {
       }
     } else {
       return ok(fileDBByHashResult.value);
+    }
+
+    if (!externalId) {
+      return err(new Error('externalId is required'));
     }
 
     const objectIdResult = await this.deps.objectRepository.writeObject(file);
@@ -77,7 +81,7 @@ export class AttachmentsGetter {
       );
     }
 
-    const fileDBResult = await this.setFile(externalId, fileExternalResult.value);
+    const fileDBResult = await this.setFile(fileExternalResult.value, externalId);
     if (fileDBResult.result === 'error') {
       return err(new Error('this.setFile', { cause: fileDBResult.value }));
     }

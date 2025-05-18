@@ -125,6 +125,8 @@ export class ProfilesUsecase {
             new Error('this.deps.chatsRepository.createChat', { cause: chatResult.value }),
           );
         }
+
+        // TODO: drinks onboarding
       } else {
         return err(
           new Error('this.deps.chatsRepository.getChatByExternalId', { cause: chatResult.value }),

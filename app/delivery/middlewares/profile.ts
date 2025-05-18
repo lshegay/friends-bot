@@ -88,6 +88,7 @@ export function createProfileMiddleware(
     }
 
     ctx.profile = allResult.value.profile;
+    ctx.profileChat = allResult.value.chat;
 
     return next();
   };

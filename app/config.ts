@@ -8,6 +8,11 @@ export const config = {
     database: process.env.POSTGRES_DB,
     ssl: process.env.POSTGRES_SSL === 'true',
   },
+  s3: {
+    endpoint: process.env.S3_ENDPOINT,
+    accessKey: process.env.S3_ACCESS_KEY,
+    secretKey: process.env.S3_SECRET_KEY,
+  },
   production: process.env.NODE_ENV === 'production',
   webhook: {
     domain: process.env.WEBHOOK_DOMAIN,

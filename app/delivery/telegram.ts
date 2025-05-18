@@ -1,16 +1,18 @@
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql';
 import type { Logger } from 'pino';
-import type { Telegraf } from 'telegraf';
+import { session, type Telegraf } from 'telegraf';
 import type { RoutineTask, RoutineTasks } from '~/entities/routines';
 import { useTelegramDelivery as useGamesDelivery } from '~/service/games/delivery/telegram';
 import { useTelegramDelivery as useProfilesDelivery } from '~/service/profiles/delivery/telegram';
 import { useTelegramDelivery as useQuotesDelivery } from '~/service/quotes/delivery/telegram';
 import { useTelegramDelivery as useRoutinesDelivery } from '~/service/routine/delivery/telegram';
 import { useTelegramDelivery as useStatsDelivery } from '~/service/stats/delivery/telegram';
+import { useTelegramDelivery as useDrinksDelivery } from '~/service/drinks/delivery/telegram';
 import type { MessageBroker } from '~lib/message-broker';
 import type { BotContext } from './middlewares/context';
 import { createProfileMiddleware } from './middlewares/profile';
 import { createRoutineMiddleware } from './middlewares/routines';
+import type { S3Client } from 'bun';
 
 export type Options = {
   firstLevelMaxExperience: number; // опыт, который нужен для получения 2-го уровня
@@ -28,6 +30,12 @@ export type Options = {
   voicesExperience: number; // опыт за голосовое сообщение
   circlesExperience: number; // опыт за круг
   pollsExperience: number; // опыт за опрос
+
+  drinks: {
+    s3Bucket: string;
+
+    s3LinksExpiration: number;
+  };
 
   statistics: {
     userCachePeriod: number; // время кэша пользователя телеграм в мс
@@ -59,6 +67,7 @@ export type Options = {
 export type Dependencies = {
   bot: Telegraf<BotContext>;
   db: BunSQLDatabase;
+  s3: S3Client;
   logger: Logger;
   tasksMessageBroker: MessageBroker<RoutineTask>;
 };
@@ -87,6 +96,7 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     },
   );
 
+  deps.bot.use(session());
   deps.bot.use(profileMiddleware);
   deps.bot.use(routineMiddleware);
 
@@ -98,6 +108,17 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
       tasksMessageBroker: deps.tasksMessageBroker,
     },
     {},
+  );
+
+  const drinksCommands = useDrinksDelivery(
+    {
+      db: deps.db,
+      s3: deps.s3,
+      bot: deps.bot,
+      logger: deps.logger,
+      tasksMessageBroker: deps.tasksMessageBroker,
+    },
+    options.drinks,
   );
 
   const quotesCommands = useQuotesDelivery(
@@ -160,11 +181,12 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     },
   );
 
-  deps.bot.telegram.setMyCommands([
+  /* deps.bot.telegram.setMyCommands([
     ...gamesCommands,
+    ...drinksCommands,
     ...quotesCommands,
     ...dailiesCommands,
     ...statsCommands,
     ...profilesCommands,
-  ]);
+  ]); */
 }

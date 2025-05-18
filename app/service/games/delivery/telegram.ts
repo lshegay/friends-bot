@@ -3,11 +3,11 @@ import type { Logger } from 'pino';
 import { Markup, type NarrowedContext, type Telegraf, type Types } from 'telegraf';
 import type { BotContext } from '~/delivery/middlewares/context';
 import type { RoutineTask } from '~/entities/routines';
-import * as cache from '~lib/cache';
 import type { MessageBroker } from '~lib/message-broker';
 import { RoutinesRepositoryTasks } from '../repository/broker-lib';
 import { GamesUsecase } from '../usecase';
 
+// biome-ignore lint/complexity/noBannedTypes: для будущего
 export type Options = {};
 
 export type Dependencies = {
@@ -22,7 +22,6 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
 
   deps.bot.command('random', delivery.commandRandom.bind(delivery));
   deps.bot.action(/^random:(\d+):(\d+):(\d+)$/, delivery.actionRandom.bind(delivery));
-  deps.bot.hears(/^(Н|н)алей (.+)\.?$/, delivery.hearsDrink.bind(delivery));
 
   return [
     {
@@ -87,33 +86,5 @@ export class TelegramGamesDelivery {
         Markup.button.callback('Случайное число от 1 до 6', `random:${min}:${max}:${number}`),
       ]),
     });
-  }
-
-  async hearsDrink(ctx: BotContext) {
-    const fileResult = await cache.getImage('assets/narberal/coffee.jpg');
-    if (fileResult.result === 'error') {
-      this.deps.logger.error(
-        new Error('cache.getImage', { cause: fileResult.value }),
-        'hearsCoffee',
-      );
-
-      return;
-    }
-
-    const coffeeResult = await this.usecase.getCoffee(ctx.profile, ctx.routine, ctx.routineTasks);
-    if (coffeeResult.result === 'error') {
-      this.deps.logger.error(
-        new Error('usecase.getCoffee', { cause: coffeeResult.value }),
-        'hearsCoffee',
-      );
-    }
-
-    const options = { caption: 'Ваш кофе ☕, мой Лорд.' };
-
-    if (typeof fileResult.value === 'string') {
-      return ctx.replyWithPhoto(fileResult.value, options);
-    }
-
-    return ctx.replyWithPhoto({ source: fileResult.value }, options);
   }
 }

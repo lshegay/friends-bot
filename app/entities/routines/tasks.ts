@@ -2,12 +2,12 @@ import { toShuffled } from '~lib/utils';
 import type { RoutineTaskCfg } from './cfg';
 import type { RoutineTask } from './types';
 
-export type RoutineTaskGetCoffee = RoutineTaskCfg<'GET_COFFEE', Record<string, unknown>>;
+export type RoutineTaskDrinkDrink = RoutineTaskCfg<'DRINK_DRINK', Record<string, unknown>>;
 
-export function createRoutineTaskGetCoffee(routineId: string): RoutineTask {
+export function createRoutineTaskDrinkDrink(routineId: string): RoutineTask {
   return {
     id: crypto.randomUUID(),
-    taskName: 'GET_COFFEE',
+    taskName: 'DRINK_DRINK',
     routineId,
     status: 'active',
     args: {},
@@ -41,7 +41,10 @@ export function createRoutineTaskSendImages(
     taskName: 'SEND_IMAGES',
     routineId,
     status: 'active',
-    args: { count: Math.floor(Math.random() * (options.max - options.min + 1)) + options.min, currentCount: 0 },
+    args: {
+      count: Math.floor(Math.random() * (options.max - options.min + 1)) + options.min,
+      currentCount: 0,
+    },
 
     createdAt: new Date(),
   };
@@ -61,17 +64,41 @@ export function createRoutineTaskSendCharacters(
     taskName: 'SEND_CHARACTERS',
     routineId,
     status: 'active',
-    args: { count: Math.floor(Math.random() * (options.max - options.min + 1)) + options.min, currentCount: 0 },
+    args: {
+      count: Math.floor(Math.random() * (options.max - options.min + 1)) + options.min,
+      currentCount: 0,
+    },
+
+    createdAt: new Date(),
+  };
+}
+
+export type RoutineTaskRepostAny = RoutineTaskCfg<'REPOST_ANY', { min: number; max: number }>;
+
+export function createRoutineTaskRepostAny(
+  routineId: string,
+  options: { min: number; max: number },
+): RoutineTask {
+  return {
+    id: crypto.randomUUID(),
+    taskName: 'REPOST_ANY',
+    routineId,
+    status: 'active',
+    args: {
+      count: Math.floor(Math.random() * (options.max - options.min + 1)) + options.min,
+      currentCount: 0,
+    },
 
     createdAt: new Date(),
   };
 }
 
 export type RoutineTasks = (
-  | RoutineTaskGetCoffee
+  | RoutineTaskDrinkDrink
   | RoutineTaskReadQuote
   | RoutineTaskSendImages
   | RoutineTaskSendCharacters
+  | RoutineTaskRepostAny
 )[];
 
 export function generateTasks(
@@ -85,8 +112,8 @@ export function generateTasks(
     const task = cfgs[index];
 
     switch (task.name) {
-      case 'GET_COFFEE': {
-        return createRoutineTaskGetCoffee(routineId);
+      case 'DRINK_DRINK': {
+        return createRoutineTaskDrinkDrink(routineId);
       }
       case 'READ_QUOTE': {
         return createRoutineTaskReadQuote(routineId);
@@ -96,6 +123,9 @@ export function generateTasks(
       }
       case 'SEND_CHARACTERS': {
         return createRoutineTaskSendCharacters(routineId, task.options);
+      }
+      case 'REPOST_ANY': {
+        return createRoutineTaskRepostAny(routineId, task.options);
       }
     }
   });

@@ -132,10 +132,16 @@ export class TelegramRoutineDelivery {
         const status = t.status === 'completed' ? '✅' : '⛔';
 
         switch (t.taskName) {
+          case 'DRINK_DRINK': {
+            return `${status}: ${taskCfg.description}${t.status === 'completed' ? ` (был выпит: ${t.args.drinkName})` : ''}`;
+          }
           case 'SEND_IMAGES': {
             return `${status}: ${taskCfg.description.replace('{1}', (t.args.count as number).toString())} (отправлено: ${t.args.currentCount})`;
           }
           case 'SEND_CHARACTERS': {
+            return `${status}: ${taskCfg.description.replace('{1}', (t.args.count as number).toString())} (отправлено: ${t.args.currentCount})`;
+          }
+          case 'REPOST_ANY': {
             return `${status}: ${taskCfg.description.replace('{1}', (t.args.count as number).toString())} (отправлено: ${t.args.currentCount})`;
           }
 

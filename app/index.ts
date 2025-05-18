@@ -1,14 +1,14 @@
+import { S3Client } from 'bun';
 import { drizzle } from 'drizzle-orm/bun-sql';
 import pino from 'pino';
 import { Telegraf } from 'telegraf';
+import { MessageBroker } from '~lib/message-broker';
 import { config } from './config';
 import type { BotContext } from './delivery/middlewares/context';
 import { useTelegramDelivery } from './delivery/telegram';
-import { MessageBroker } from '~lib/message-broker';
 import type { RoutineTask } from './entities/routines';
 
 import '~lib/dayjs';
-import dayjs from 'dayjs';
 
 const logger = pino({
   ...(!config.production
@@ -40,12 +40,22 @@ const db = drizzle({
 
 logger.info('✅ Connected to Postgres database');
 
+if (!config.s3.endpoint?.length || !config.s3.accessKey?.length || !config.s3.secretKey?.length) {
+  throw new Error('No S3 data is used.');
+}
+
+const s3 = new S3Client({
+  endpoint: config.s3.endpoint,
+  accessKeyId: config.s3.accessKey,
+  secretAccessKey: config.s3.secretKey,
+});
+
 const bot = new Telegraf<BotContext>(config.token);
 
 const tasksMessageBroker = new MessageBroker<RoutineTask>();
 
 useTelegramDelivery(
-  { db, bot, logger, tasksMessageBroker },
+  { db, s3, bot, logger, tasksMessageBroker },
   {
     experienceProportionIncrease: 0.5,
     firstLevelMaxExperience: 100,
@@ -63,6 +73,12 @@ useTelegramDelivery(
     circlesExperience: 30,
     pollsExperience: 2,
 
+    drinks: {
+      s3Bucket: 'drinks',
+
+      s3LinksExpiration: 60 * 60 * 24, // 24 часа
+    },
+
     statistics: {
       userCachePeriod: 1000 * 60 * 60 * 24, // 24 часа
       userStatsRatingCount: 10, // количество пользователей в рейтинге
@@ -76,8 +92,8 @@ useTelegramDelivery(
 
       tasks: [
         {
-          name: 'GET_COFFEE',
-          description: 'Выпить 1 чашку кофе.',
+          name: 'DRINK_DRINK',
+          description: 'Выпить 1 любой напиток.',
 
           options: {},
 
@@ -112,6 +128,17 @@ useTelegramDelivery(
           },
 
           experience: 50,
+        },
+        {
+          name: 'REPOST_ANY',
+          description: 'Репостнуть {1} любых постов с каких-нибудь каналов.',
+
+          options: {
+            min: 1,
+            max: 3,
+          },
+
+          experience: 20,
         },
       ],
     },

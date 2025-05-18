@@ -100,7 +100,9 @@ export class TelegramProfilesDelivery {
 Ваш опыт: <b>${ctx.profile.experience} / ${ctx.profile.currentLevelMaxExperience}</b>`,
       {
         parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([Markup.button.callback('Расширенная статистика', 'profile:extended')]),
+        ...Markup.inlineKeyboard([
+          Markup.button.callback('Расширенная статистика', 'profile:extended'),
+        ]),
       },
     );
   }
@@ -143,7 +145,9 @@ export class TelegramProfilesDelivery {
     }
 
     if ('forward_origin' in ctx.message) {
-      reasons.reposts = {};
+      if (ctx.message.forward_origin?.type === 'channel') {
+        reasons.reposts = {};
+      }
     }
 
     if ('voice' in ctx.message) {

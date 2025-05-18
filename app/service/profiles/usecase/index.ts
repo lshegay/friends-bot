@@ -217,6 +217,23 @@ export class ProfilesUsecase {
     if (reason.reposts) {
       exp += this.options.repostsExperience;
       profileStatistics.repostsCount++;
+
+      const task = options.routineTasks.find(
+        (task) => task.taskName === 'REPOST_ANY' && task.status === 'active',
+      );
+      if (task) {
+        await this.deps.repositoryRoutinesTasks.setTask({
+          ...task,
+          status:
+            (task.args.currentCount as number) + 1 >= (task.args.count as number)
+              ? 'completed'
+              : 'active',
+          args: {
+            ...task.args,
+            currentCount: (task.args.currentCount as number) + 1,
+          },
+        });
+      }
     } else {
       if (reason.characters) {
         // удаляем повторяющиеся символы

@@ -181,12 +181,12 @@ export function useTelegramDelivery(deps: Dependencies, options: Options) {
     },
   );
 
-  /* deps.bot.telegram.setMyCommands([
+  deps.bot.telegram.setMyCommands([
     ...gamesCommands,
     ...drinksCommands,
     ...quotesCommands,
     ...dailiesCommands,
     ...statsCommands,
     ...profilesCommands,
-  ]); */
+  ]);
 }

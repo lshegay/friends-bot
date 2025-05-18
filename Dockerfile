@@ -13,7 +13,7 @@ RUN bun install
 # Copy the rest of the application code
 COPY . .
 
-RUN bunx drizzle-kit migrate
+# RUN bunx drizzle-kit migrate
 
 # Expose the desired port (e.g., 3000)
 EXPOSE 3000

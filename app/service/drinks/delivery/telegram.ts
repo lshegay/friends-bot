@@ -325,7 +325,7 @@ export class TelegramDrinksDelivery {
     const drinksList = drinks
       .map(
         (drink) =>
-          `• *${drink.name}* \\- ${drink.description} \\(объем: ${drink.sips} глотков${drink.freshness > 0 ? ', может испортиться' : ''}\\)\\.`,
+          `• *${drink.name}* \\- ${drink.description.replaceAll('.', '\\.')} \\(объем: ${drink.sips} глотков${drink.freshness > 0 ? ', может испортиться' : ''}\\)\\.`,
       )
       .join('\n');
 
